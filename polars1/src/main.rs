@@ -63,7 +63,7 @@ fn main() -> Result<(), PolarsError> {
         .clone()
         .lazy()
         // Sort by name in ascending order
-        .select([col(NAME).sort(false)])
+        .select([col(NAME).sort(SortOptions::new().with_order_descending(false))])
         // Get the first 10 rows
         .limit(10)
         .collect()?;
@@ -81,11 +81,8 @@ fn main() -> Result<(), PolarsError> {
         .agg([col(NUM_EMPLOYEES).sum()])
         // Sort by number of employees in descending order
         .sort(
-            NUM_EMPLOYEES,
-            SortOptions {
-                descending: true,
-                ..Default::default()
-            },
+            [NUM_EMPLOYEES],
+            SortMultipleOptions::new().with_order_descending(true),
         )
         // Get the first row
         .first()
