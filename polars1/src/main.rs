@@ -7,6 +7,11 @@ use std::io::Cursor;
 
 use polars::prelude::*;
 
+const INDUSTRY: &str = "Industry";
+const NAME: &str = "Name";
+const NUM_EMPLOYEES: &str = "NumEmployees";
+const WEBSITE: &str = "Website";
+
 fn main() -> Result<(), PolarsError> {
     // ////////////////////////////////////////////////
     // @TODO 1
@@ -35,7 +40,7 @@ fn main() -> Result<(), PolarsError> {
     // The "Industry" column has some empty (NULL) values
     // how many NULL values are there?
     // ////////////////////////////////////////////////
-    let null_count = df.column("Industry")?.null_count();
+    let null_count = df.column(INDUSTRY)?.null_count();
     println!("Null values in `Industry`: {}", null_count);
 
     // ////////////////////////////////////////////////
@@ -44,9 +49,10 @@ fn main() -> Result<(), PolarsError> {
     // ////////////////////////////////////////////////
     let df = df
         .lazy()
-        .with_column(col("Industry").fill_null(lit("Unknown")))
+        // Fill null values in industry with `Unknown`
+        .with_column(col(INDUSTRY).fill_null(lit("Unknown")))
         .collect()?;
-    assert_eq!(df.column("Industry")?.null_count(), 0);
+    assert_eq!(df.column(INDUSTRY)?.null_count(), 0);
 
     // ////////////////////////////////////////////////
     // @TODO 5
@@ -56,7 +62,9 @@ fn main() -> Result<(), PolarsError> {
     let sorted_df = df
         .clone()
         .lazy()
-        .select([col("Name").sort(false)])
+        // Sort by name in ascending order
+        .select([col(NAME).sort(false)])
+        // Get the first 10 rows
         .limit(10)
         .collect()?;
     println!("{:?}", sorted_df);
@@ -68,16 +76,19 @@ fn main() -> Result<(), PolarsError> {
     let industry_count_df = df
         .clone()
         .lazy()
-        .group_by([col("Industry")])
-        .agg([col("NumEmployees").sum()])
+        // Group by industry and sum the number of employees
+        .group_by([col(INDUSTRY)])
+        .agg([col(NUM_EMPLOYEES).sum()])
+        // Sort by number of employees in descending order
         .sort(
-            "NumEmployees",
+            NUM_EMPLOYEES,
             SortOptions {
                 descending: true,
                 ..Default::default()
             },
         )
-        .limit(1)
+        // Get the first row
+        .first()
         .collect()?;
     println!("{:?}", industry_count_df);
 
@@ -94,16 +105,18 @@ fn main() -> Result<(), PolarsError> {
     let legal_services_emp_count_df = df
         .clone()
         .lazy()
-        .filter(col("Industry").eq(lit("Legal Services")))
-        .group_by([col("Industry")])
-        .agg([col("NumEmployees").sum()])
+        // Get rows where industry is `Legal Services`
+        .filter(col(INDUSTRY).eq(lit("Legal Services")))
+        // Group by industry and sum the number of employees
+        .group_by([col(INDUSTRY)])
+        .agg([col(NUM_EMPLOYEES).sum()])
         .collect()?;
     println!("{:?}", legal_services_emp_count_df);
 
     // get the first row
     let row = legal_services_emp_count_df.get(0).unwrap();
     assert_eq!(row[1], AnyValue::Int64(8360));
-    
+
     // ////////////////////////////////////////////////
     // @TODO 8
     // THIS ONE IS CHALLENGING
@@ -112,11 +125,15 @@ fn main() -> Result<(), PolarsError> {
     // [hint]: there is a "starts_with" function in one of the features
     // ////////////////////////////////////////////////
     let https_df = df
-        .clone()
         .lazy()
-        .filter(col("Website").str().starts_with(lit("https")))
+        // Get rows where website start with `https`
+        .filter(col(WEBSITE).str().starts_with(lit("https")))
+        // Get the website column
+        .select([col(WEBSITE).alias("Https")])
+        // Creates single row with count of rows
+        .count()
         .collect()?;
-    println!("Answer 8: {:?}", https_df.height());
+    println!("{:?}", https_df);
 
     Ok(())
 }
